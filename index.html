@@ -801,30 +801,21 @@ updateCartUI()
 </script>
 
   
-<script>
 
-/* =====================================================
-   ORDER ITEMS POSTER (STANDALONE ADDITION)
-   -----------------------------------------------------
-   PURPOSE:
-   Capture ordered cart items and send them to
-   ORDER_ITEMS sheet using the SAME OrderID used
-   in the payment request.
-===================================================== */
+
+
+  <script>
+
+/* ======================================
+   ORDER ITEMS POSTER
+   Sends cart items to ORDER_ITEMS sheet
+====================================== */
 
 (function(){
 
-/* store the OrderID used in payment */
-let currentOrderId = null;
+let orderIdCaptured = null;
 
-
-/* =====================================================
-   INTERCEPT FETCH REQUEST
-   -----------------------------------------------------
-   We intercept the fetch request used when
-   payment is initiated. This allows us to capture
-   the orderId being sent to Apps Script.
-===================================================== */
+/* intercept payment request */
 
 const originalFetch = window.fetch;
 
@@ -836,24 +827,18 @@ window.fetch = async function(...args){
 
     const url = args[0];
 
-    /* check if this is the payment initiation request */
     if(url.includes("initiatePayment")){
 
-      /* read the payload sent */
       const body = JSON.parse(args[1].body);
 
-      /* capture the orderId */
-      currentOrderId = body.orderId;
+      orderIdCaptured = body.orderId;
 
-      /* once captured, send cart items */
-      sendOrderItems(currentOrderId);
+      sendItems(orderIdCaptured);
 
     }
 
-  }catch(err){
-
-    console.log("Fetch interception error:",err);
-
+  }catch(e){
+    console.log("fetch intercept error",e);
   }
 
   return response;
@@ -861,63 +846,52 @@ window.fetch = async function(...args){
 };
 
 
-/* =====================================================
-   SEND CART ITEMS TO GOOGLE SHEET
-===================================================== */
+/* send cart items */
 
-async function sendOrderItems(orderId){
+async function sendItems(orderId){
 
-  /* load cart stored in browser */
   const cart = JSON.parse(localStorage.getItem("featherfield_cart_v1")) || {};
 
   if(Object.keys(cart).length === 0) return;
 
-
-  /* convert cart into item objects */
   const items = Object.entries(cart).map(([id,q])=>{
 
     const p = CATALOG[id];
 
     return{
-
-      productId: p.id,
-      productName: p.title,
-      quantity: q,
-      unitPrice: p.price,
-      itemTotal: p.price * q
-
-    };
+      productId:p.id,
+      productName:p.title,
+      quantity:q,
+      unitPrice:p.price,
+      itemTotal:p.price*q
+    }
 
   });
 
-
-  /* payload sent to Apps Script */
-  const payload = {
-
-    action: "saveOrderItems",
-
-    orderId: orderId,
-
-    items: items,
-
-    timestamp: new Date().toISOString()
-
-  };
-
-
   try{
 
-    await fetch(GSHEET_WEB_APP_URL + "?action=saveOrderItems",{
+    await fetch(GSHEET_WEB_APP_URL,{
 
-      method: "POST",
+      method:"POST",
 
-      body: JSON.stringify(payload)
+      headers:{
+        "Content-Type":"application/json"
+      },
+
+      body:JSON.stringify({
+
+        action:"saveOrderItems",
+        orderId:orderId,
+        items:items,
+        timestamp:new Date().toISOString()
+
+      })
 
     });
 
   }catch(err){
 
-    console.log("Order item saving failed:",err);
+    console.log("items save failed",err);
 
   }
 
