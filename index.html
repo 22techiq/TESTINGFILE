@@ -661,7 +661,8 @@ document.getElementById("checkout-form").addEventListener("submit",async functio
     }
 
   })
-
+<!--Not submitting Name in Name column-->
+<!--
   const payload={
 
     action:"initiatePayment",
@@ -681,7 +682,22 @@ document.getElementById("checkout-form").addEventListener("submit",async functio
     timestamp:new Date().toISOString()
 
   }
+  /*corrected payload submitting Name etc as espected*/
+  const payload={
 
+  action:"initiatePayment",
+  orderId:"ORD-"+Date.now(),
+
+  name:document.getElementById("cust-name").value.trim(),
+
+  email:document.getElementById("cust-email").value.trim(),
+
+  phone:document.getElementById("cust-phone").value.trim(),
+
+  amount:cartTotal(cart)
+
+}
+/*End of corrected payload submitting Name etc as espected*/
   const btn=e.submitter
 
   btn.disabled=true
